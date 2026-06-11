@@ -296,6 +296,7 @@ export default function App() {
   const [guestKids,   setGuestKids]   = useState(0);
   const [guestAnswers, setGuestAnswers] = useState({});
   const [guestItems, setGuestItems] = useState([]);
+  const [guestOtherLabels, setGuestOtherLabels] = useState({}); // { catId: "what they're bringing" }
   const [guestReminder, setGuestReminder] = useState(true);
   const [guestSubmitted, setGuestSubmitted] = useState(false);
   const [guestError, setGuestError] = useState("");
@@ -363,8 +364,13 @@ export default function App() {
     if (!guestName.trim()) { setGuestError("Please enter your name."); return; }
     if (!guestEmail.trim() || !guestEmail.includes("@")) { setGuestError("Please enter a valid email address."); return; }
     if (guestItems.length === 0) { setGuestError("Please choose at least one item to bring."); return; }
+    const missingOther = guestItems.find(i => i.item === "Other" && !guestOtherLabels[i.cat]?.trim());
+    if (missingOther) { setGuestError("Please describe what you'll bring in the 'Other' field."); return; }
+    const resolvedItems = guestItems.map(i =>
+      i.item === "Other" ? { ...i, item: guestOtherLabels[i.cat]?.trim() || "Other" } : i
+    );
     const token = genToken();
-    const entry = { id: Date.now(), familyName: guestName.trim(), email: guestEmail.trim(), phone: guestPhone.trim(), adults: guestAdults, teens: guestTeens, kids: guestKids, reminder: guestReminder, editToken: token, answers: guestAnswers, items: guestItems };
+    const entry = { id: Date.now(), familyName: guestName.trim(), email: guestEmail.trim(), phone: guestPhone.trim(), adults: guestAdults, teens: guestTeens, kids: guestKids, reminder: guestReminder, editToken: token, answers: guestAnswers, items: resolvedItems };
     const updated = { ...appData, guests: [...guests, entry] };
     persist(updated);
     setNewGuest(entry);
@@ -374,7 +380,7 @@ export default function App() {
 
   function resetGuest() {
     setGuestName(""); setGuestEmail(""); setGuestPhone(""); setGuestAdults(2); setGuestTeens(0); setGuestKids(0);
-    setGuestAnswers({}); setGuestItems([]); setGuestReminder(true);
+    setGuestAnswers({}); setGuestItems([]); setGuestOtherLabels({}); setGuestReminder(true);
     setGuestSubmitted(false); setGuestError(""); setGuestStep(1); setNewGuest(null);
   }
 
@@ -569,13 +575,13 @@ export default function App() {
                       <div style={{ padding: "10px 14px", borderTop: `1px solid ${activeDraftTheme.mid}` }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                           {active.items.map(item => (
-                            <div key={item} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px 4px 10px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
-                              <span style={{ fontSize: 12, fontWeight: 500 }}>{item}</span>
+                            <div key={item} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text, maxWidth: "100%" }}>
+                              <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap" }}>{item}</span>
                               <button onClick={e => { e.stopPropagation(); setDraft(p => ({ ...p, categories: p.categories.map(c => c.id === cat.id ? { ...c, items: c.items.filter(i => i !== item) } : c) })); }}
-                                style={{ background: "none", border: "none", cursor: "pointer", color: activeDraftTheme.text, fontSize: 13, lineHeight: 1, padding: "0 2px", opacity: 0.6 }}>✕</button>
+                                style={{ background: "none", border: "none", cursor: "pointer", color: activeDraftTheme.text, fontSize: 12, lineHeight: 1, padding: "0 2px", opacity: 0.6, flexShrink: 0 }}>✕</button>
                             </div>
                           ))}
-                          <span style={{ padding: "4px 10px", borderRadius: 999, background: "#f1f5f9", color: "#94a3b8", fontSize: 11, fontStyle: "italic" }}>+ Other</span>
+                          <span style={{ padding: "5px 11px", borderRadius: 999, background: "#f1f5f9", color: "#94a3b8", fontSize: 11, fontStyle: "italic" }}>+ Other</span>
                         </div>
                         {/* add custom item */}
                         <div style={{ display: "flex", gap: 6 }}>
@@ -601,13 +607,13 @@ export default function App() {
                   <div style={{ padding: "10px 14px", borderTop: `1px solid ${activeDraftTheme.mid}` }}>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 7 }}>
                       {cat.items.map(item => (
-                        <div key={item} style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px 3px 10px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
-                          <span style={{ fontSize: 12 }}>{item}</span>
+                        <div key={item} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
+                          <span style={{ fontSize: 12, whiteSpace: "nowrap" }}>{item}</span>
                           <button onClick={() => setDraft(p => ({ ...p, categories: p.categories.map(c2 => c2.id === cat.id ? { ...c2, items: c2.items.filter(i => i !== item) } : c2) }))}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: activeDraftTheme.text, fontSize: 12, lineHeight: 1, padding: "0 1px", opacity: 0.6 }}>✕</button>
+                            style={{ background: "none", border: "none", cursor: "pointer", color: activeDraftTheme.text, fontSize: 12, lineHeight: 1, padding: "0 1px", opacity: 0.6, flexShrink: 0 }}>✕</button>
                         </div>
                       ))}
-                      <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f1f5f9", color: "#94a3b8", fontSize: 11, fontStyle: "italic" }}>+ Other</span>
+                      <span style={{ padding: "5px 11px", borderRadius: 999, background: "#f1f5f9", color: "#94a3b8", fontSize: 11, fontStyle: "italic" }}>+ Other</span>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
                       <input id={`add-${cat.id}`} placeholder="Add item…" style={{...inp,fontSize:12,padding:"5px 9px",flex:1}}
@@ -628,10 +634,19 @@ export default function App() {
               ) : (
                 <div style={{ marginBottom: 12, borderRadius: 10, border: `1.5px solid ${activeDraftTheme.mid}`, padding: "14px", background: activeDraftTheme.light }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: activeDraftTheme.text, marginBottom: 12 }}>New custom category</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "60px 1fr", gap: 8, marginBottom: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 8, marginBottom: 10 }}>
                     <div>
                       <label style={lbl}>Emoji</label>
-                      <input value={newCatDraft.emoji} onChange={e => setNewCatDraft(p => ({...p,emoji:e.target.value}))} maxLength={2} style={{...inp,textAlign:"center",fontSize:18,padding:"7px 4px"}} />
+                      <select value={newCatDraft.emoji} onChange={e => setNewCatDraft(p => ({...p,emoji:e.target.value}))}
+                        style={{ ...inp, padding: "9px 8px", fontSize: 16, cursor: "pointer" }}>
+                        {["🍖","🥩","🍗","🌭","🥓","🍔","🌮","🌯","🍝","🥘","🍲","🫕",
+                          "🥗","🥙","🥬","🥦","🫑","🥕","🌽","🍅","🧄","🧅",
+                          "🍞","🥖","🥐","🫓","🧁","🎂","🍰","🍮","🍩","🍪","🍫","🍬",
+                          "🍺","🍻","🍷","🥂","🍾","🍸","🥤","🧃","☕","🫖","💧",
+                          "🧀","🫙","🥚","🧆","🍱","🫔","✨","🍽️","🫙","🧁"].map(e => (
+                          <option key={e} value={e}>{e}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label style={lbl}>Category name</label>
@@ -641,10 +656,10 @@ export default function App() {
                   <label style={lbl}>Items <span style={{ color:"#cbd5e1",fontWeight:400,textTransform:"none",letterSpacing:0 }}>(press Enter or + to add each one)</span></label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 7 }}>
                     {newCatDraft.items.map(item => (
-                      <div key={item} style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px 3px 10px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
-                        <span style={{ fontSize: 12 }}>{item}</span>
+                      <div key={item} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
+                        <span style={{ fontSize: 12, whiteSpace: "nowrap" }}>{item}</span>
                         <button onClick={() => setNewCatDraft(p => ({...p,items:p.items.filter(i=>i!==item)}))}
-                          style={{ background:"none",border:"none",cursor:"pointer",color:activeDraftTheme.text,fontSize:12,lineHeight:1,padding:"0 1px",opacity:0.6 }}>✕</button>
+                          style={{ background:"none",border:"none",cursor:"pointer",color:activeDraftTheme.text,fontSize:12,lineHeight:1,padding:"0 1px",opacity:0.6,flexShrink:0 }}>✕</button>
                       </div>
                     ))}
                   </div>
@@ -1057,6 +1072,17 @@ export default function App() {
                                 </button>
                               ); })()}
                             </div>
+                            {/* Other text input */}
+                            {guestItems.find(i => i.cat === cat.id && i.item === "Other") && (
+                              <div style={{ marginBottom: 7, paddingLeft: 4 }}>
+                                <input
+                                  value={guestOtherLabels[cat.id] || ""}
+                                  onChange={e => setGuestOtherLabels(p => ({ ...p, [cat.id]: e.target.value }))}
+                                  placeholder={`What ${cat.label.toLowerCase()} will you bring?`}
+                                  style={{ ...inp, fontSize: 12, padding: "7px 10px", background: theme.light, borderColor: theme.mid }}
+                                />
+                              </div>
+                            )}
                             {guestItems.filter(i => i.cat === cat.id).map(i => (
                               <div key={i.item} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, paddingLeft: 4 }}>
                                 <span style={{ fontSize: 12, color: "#475569", flex: 1 }}>{i.item}</span>
