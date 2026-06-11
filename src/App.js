@@ -40,14 +40,17 @@ const DEMO_EVENT = {
   ],
   customQuestions: [
     { id: "q1", label: "Any dietary requirements?", type: "text", placeholder: "e.g. vegetarian, gluten-free, nut allergy" },
-    { id: "q2", label: "Will you need parking?", type: "choice", options: ["Yes please", "No, I'll walk/uber"] },
+  ],
+  furtherInfo: [
+    { id: "fi1", label: "What time will you arrive?", type: "choice", options: ["Early (to help set up)", "Afternoon (2–4pm)", "At the start (5pm)", "Later in the evening"] },
+    { id: "fi2", label: "Any notes for the hosts?", type: "text", placeholder: "Anything we should know!" },
   ],
 };
 
 const SEED_GUESTS = [
-  { id: 1, familyName: "The Nguyens",  email: "nguyens@email.com",  phone: "+61412345678", adults: 2, kids: 2, reminder: true,  editToken: "tok-1", answers: { q1: "One nut allergy", q2: "Yes please" },       items: [{ cat: "salads",   item: "Caesar Salad", servings: 8 }, { cat: "drinks", item: "Soft Drinks", servings: 8 }] },
-  { id: 2, familyName: "Dave & Priya", email: "dave@email.com",     phone: "+61423456789", adults: 2, kids: 0, reminder: false, editToken: "tok-2", answers: { q1: "",                q2: "No, I'll walk/uber" }, items: [{ cat: "desserts", item: "Pavlova",       servings: 10 }, { cat: "snacks", item: "Chips & Dips", servings: 10 }] },
-  { id: 3, familyName: "The Garcias",  email: "garcias@email.com",  phone: "+61434567890", adults: 2, kids: 3, reminder: true,  editToken: "tok-3", answers: { q1: "Vegetarian x2",  q2: "Yes please" },        items: [{ cat: "salads",   item: "Green Salad",  servings: 10 }, { cat: "bread",  item: "Garlic Bread",  servings: 12 }] },
+  { id: 1, familyName: "The Nguyens",  emoji: "🌸", email: "nguyens@email.com",  phone: "+61412345678", adults: 2, kids: 2, reminder: true,  editToken: "tok-1", answers: { q1: "One nut allergy" }, furtherInfoAnswers: { fi1: "At the start (5pm)", fi2: "" }, items: [{ cat: "salads", item: "Caesar Salad", servings: 8 }, { cat: "drinks", item: "Soft Drinks", servings: 8 }] },
+  { id: 2, familyName: "Dave & Priya", emoji: "🔥", email: "dave@email.com",     phone: "+61423456789", adults: 2, kids: 0, reminder: false, editToken: "tok-2", answers: { q1: "" },                  furtherInfoAnswers: { fi1: "Early (to help set up)", fi2: "Bringing extra chairs!" }, items: [{ cat: "desserts", item: "Pavlova", servings: 10 }, { cat: "snacks", item: "Chips & Dips", servings: 10 }] },
+  { id: 3, familyName: "The Garcias",  emoji: "🌿", email: "garcias@email.com",  phone: "+61434567890", adults: 2, kids: 3, reminder: true,  editToken: "tok-3", answers: { q1: "Vegetarian x2" },   furtherInfoAnswers: { fi1: "Afternoon (2–4pm)", fi2: "" }, items: [{ cat: "salads", item: "Green Salad", servings: 10 }, { cat: "bread", item: "Garlic Bread", servings: 12 }] },
 ];
 
 async function loadData() {
@@ -284,6 +287,9 @@ export default function App() {
     welcomeMessage: "Thanks for coming along! Check out who else is joining and what they're bringing — try to fill the gaps so we end up with a great spread. Bonus points for bringing a speciality so we all get to know you a little better 🙌",
     categories: PRESET_CATEGORIES.slice(1).map(c => ({ ...c, items: [...c.items], includeOther: true })),
     customQuestions: [],
+    furtherInfo: [
+      { id: "fi-arrival", label: "What time will you arrive?", type: "choice", options: ["Early (to help set up)", "On time", "A little later"] },
+    ],
   });
 
   // guest signup
@@ -291,10 +297,12 @@ export default function App() {
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmoji, setGuestEmoji] = useState("😊");
   const [guestAdults, setGuestAdults] = useState(2);
   const [guestTeens,  setGuestTeens]  = useState(0);
   const [guestKids,   setGuestKids]   = useState(0);
   const [guestAnswers, setGuestAnswers] = useState({});
+  const [gFurtherInfo, setGFurtherInfo] = useState({});
   const [guestItems, setGuestItems] = useState([]);
   const [guestOtherLabels, setGuestOtherLabels] = useState({}); // { catId: "what they're bringing" }
   const [guestReminder, setGuestReminder] = useState(true);
@@ -370,7 +378,7 @@ export default function App() {
       i.item === "Other" ? { ...i, item: guestOtherLabels[i.cat]?.trim() || "Other" } : i
     );
     const token = genToken();
-    const entry = { id: Date.now(), familyName: guestName.trim(), email: guestEmail.trim(), phone: guestPhone.trim(), adults: guestAdults, teens: guestTeens, kids: guestKids, reminder: guestReminder, editToken: token, answers: guestAnswers, items: resolvedItems };
+    const entry = { id: Date.now(), familyName: guestName.trim(), emoji: guestEmoji, email: guestEmail.trim(), phone: guestPhone.trim(), adults: guestAdults, teens: guestTeens, kids: guestKids, reminder: guestReminder, editToken: token, answers: guestAnswers, furtherInfoAnswers: gFurtherInfo, items: resolvedItems };
     const updated = { ...appData, guests: [...guests, entry] };
     persist(updated);
     setNewGuest(entry);
@@ -379,8 +387,9 @@ export default function App() {
   }
 
   function resetGuest() {
-    setGuestName(""); setGuestEmail(""); setGuestPhone(""); setGuestAdults(2); setGuestTeens(0); setGuestKids(0);
-    setGuestAnswers({}); setGuestItems([]); setGuestOtherLabels({}); setGuestReminder(true);
+    setGuestName(""); setGuestEmail(""); setGuestPhone(""); setGuestEmoji("😊");
+    setGuestAdults(2); setGuestTeens(0); setGuestKids(0);
+    setGuestAnswers({}); setGFurtherInfo({}); setGuestItems([]); setGuestOtherLabels({}); setGuestReminder(true);
     setGuestSubmitted(false); setGuestError(""); setGuestStep(1); setNewGuest(null);
   }
 
@@ -427,8 +436,8 @@ export default function App() {
       <style>{`@keyframes slideUp { from { transform: translateY(20px); opacity:0 } to { transform: translateY(0); opacity:1 } }`}</style>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: theme.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-            {currentGuest.familyName.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#fff", border: `1.5px solid ${theme.mid}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+            {currentGuest.emoji || "😊"}
           </div>
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b" }}>👀 Look who's coming!</div>
@@ -502,7 +511,7 @@ export default function App() {
 
   // ── CREATE EVENT ──
   if (screen === "create") {
-    const stepLabels = ["Basics", "Food", "Questions", "Theme"];
+    const stepLabels = ["Basics", "Food", "Further Info", "Theme"];
     const activeDraftTheme = getTheme(draft.themeId);
     return (
       <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: FS }}>
@@ -724,35 +733,112 @@ export default function App() {
 
               <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <button onClick={() => setCreateStep(1)} style={{...ghostBtn,flex:1}}>← Back</button>
-                <button onClick={() => setCreateStep(3)} style={{...primaryBtn,flex:2}}>Next → Questions</button>
+                <button onClick={() => setCreateStep(3)} style={{...primaryBtn,flex:2}}>Next → Further Info</button>
               </div>
             </div>
           )}
 
-          {/* STEP 3 */}
+          {/* STEP 3 — Further Info */}
           {createStep === 3 && (
             <div style={card}>
-              <h3 style={{ fontFamily: F, color: "#1e293b", marginTop: 0, marginBottom: 6, fontSize: 19 }}>Custom questions</h3>
-              <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 0, marginBottom: 18 }}>Optional — dietary needs, parking, song requests…</p>
-              {draft.customQuestions.map((q, i) => (
-                <div key={q.id} style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "#f8fafc", border: "1px solid #f1f5f9" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>Question {i+1}</span>
-                    <button onClick={() => setDraft(p => ({...p,customQuestions:p.customQuestions.filter((_,j)=>j!==i)}))} style={{ background: "none", border: "none", color: "#e05030", cursor: "pointer", fontSize: 12 }}>Remove</button>
-                  </div>
-                  <input value={q.label} onChange={e => setDraft(p => ({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,label:e.target.value}:x)}))} placeholder="Question text" style={{...inp,marginBottom:6}} />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {["text","choice"].map(t => (
-                      <button key={t} onClick={() => setDraft(p => ({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,type:t}:x)}))}
-                        style={{...ghostBtn,padding:"4px 10px",fontSize:11,background:q.type===t?activeDraftTheme.light:"transparent",borderColor:q.type===t?activeDraftTheme.primary:"#e2e8f0",color:q.type===t?activeDraftTheme.text:"#94a3b8"}}>
-                        {t==="text"?"Free text":"Multiple choice"}
-                      </button>
-                    ))}
-                  </div>
+              <h3 style={{ fontFamily: F, color: "#1e293b", marginTop: 0, marginBottom: 4, fontSize: 19 }}>Further Info</h3>
+              <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 0, marginBottom: 20 }}>Add questions and structured info fields for your guests to fill in.</p>
+
+              {/* Section 1: Questions */}
+              <div style={{ marginBottom: 22 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: activeDraftTheme.primary, color: "#fff", borderRadius: 999, width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>1</span>
+                  Questions
+                  <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: 11 }}>— free text or multiple choice</span>
                 </div>
-              ))}
-              <button onClick={() => setDraft(p => ({...p,customQuestions:[...p.customQuestions,{id:`q${Date.now()}`,label:"",type:"text"}]}))}
-                style={{...ghostBtn,width:"100%",textAlign:"center",marginBottom:14}}>+ Add question</button>
+                {draft.customQuestions.map((q, i) => (
+                  <div key={q.id} style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "#f8fafc", border: "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>Question {i+1}</span>
+                      <button onClick={() => setDraft(p => ({...p,customQuestions:p.customQuestions.filter((_,j)=>j!==i)}))} style={{ background:"none",border:"none",color:"#e05030",cursor:"pointer",fontSize:12 }}>Remove</button>
+                    </div>
+                    <input value={q.label} onChange={e => setDraft(p => ({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,label:e.target.value}:x)}))} placeholder="Question text" style={{...inp,marginBottom:6}} />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {["text","choice"].map(t => (
+                        <button key={t} onClick={() => setDraft(p => ({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,type:t}:x)}))}
+                          style={{...ghostBtn,padding:"4px 10px",fontSize:11,background:q.type===t?activeDraftTheme.light:"transparent",borderColor:q.type===t?activeDraftTheme.primary:"#e2e8f0",color:q.type===t?activeDraftTheme.text:"#94a3b8"}}>
+                          {t==="text"?"Free text":"Multiple choice"}
+                        </button>
+                      ))}
+                    </div>
+                    {q.type === "choice" && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+                          {(q.options||[]).map(opt => (
+                            <div key={opt} style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px 3px 10px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text, fontSize: 11 }}>
+                              <span>{opt}</span>
+                              <button onClick={() => setDraft(p => ({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,options:(x.options||[]).filter(o=>o!==opt)}:x)}))}
+                                style={{ background:"none",border:"none",cursor:"pointer",color:activeDraftTheme.text,fontSize:11,lineHeight:1,padding:"0 1px",opacity:0.6 }}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input id={`qopt-${q.id}`} placeholder="Add option…" style={{...inp,fontSize:11,padding:"5px 8px",flex:1}}
+                            onKeyDown={e => { if(e.key==="Enter"&&e.target.value.trim()){setDraft(p=>({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,options:[...(x.options||[]),e.target.value.trim()]}:x)}));e.target.value="";} }} />
+                          <button onClick={() => { const el=document.getElementById(`qopt-${q.id}`); if(el?.value.trim()){setDraft(p=>({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,options:[...(x.options||[]),el.value.trim()]}:x)}));el.value="";} }}
+                            style={{...primaryBtn,padding:"5px 10px",fontSize:11}}>+ Add</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setDraft(p => ({...p,customQuestions:[...p.customQuestions,{id:`q${Date.now()}`,label:"",type:"text",options:[]}]}))}
+                  style={{...ghostBtn,width:"100%",textAlign:"center",fontSize:12}}>+ Add question</button>
+              </div>
+
+              {/* Section 2: Further Info */}
+              <div style={{ marginBottom: 16, paddingTop: 16, borderTop: "1px solid #f1f5f9" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: activeDraftTheme.primary, color: "#fff", borderRadius: 999, width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>2</span>
+                  Further Info
+                  <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: 11 }}>— structured fields e.g. arrival time</span>
+                </div>
+                <p style={{ color: "#94a3b8", fontSize: 12, margin: "0 0 12px" }}>Use these for logistics where you want a structured response — arrival time, transport, meal preferences, etc.</p>
+                {draft.furtherInfo.map((fi, i) => (
+                  <div key={fi.id} style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "#f0f9ff", border: "1px solid #bae6fd" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 7 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>Field {i+1}</span>
+                      <button onClick={() => setDraft(p => ({...p,furtherInfo:p.furtherInfo.filter((_,j)=>j!==i)}))} style={{ background:"none",border:"none",color:"#e05030",cursor:"pointer",fontSize:12 }}>Remove</button>
+                    </div>
+                    <input value={fi.label} onChange={e => setDraft(p => ({...p,furtherInfo:p.furtherInfo.map((x,j)=>j===i?{...x,label:e.target.value}:x)}))} placeholder="e.g. What time will you arrive?" style={{...inp,marginBottom:6}} />
+                    <div style={{ display: "flex", gap: 6, marginBottom: fi.type==="choice"?8:0 }}>
+                      {["text","choice"].map(t => (
+                        <button key={t} onClick={() => setDraft(p => ({...p,furtherInfo:p.furtherInfo.map((x,j)=>j===i?{...x,type:t}:x)}))}
+                          style={{...ghostBtn,padding:"4px 10px",fontSize:11,background:fi.type===t?"#e0f2fe":"transparent",borderColor:fi.type===t?"#0284c7":"#e2e8f0",color:fi.type===t?"#0369a1":"#94a3b8"}}>
+                          {t==="text"?"Free text":"Multiple choice"}
+                        </button>
+                      ))}
+                    </div>
+                    {fi.type === "choice" && (
+                      <div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
+                          {(fi.options||[]).map(opt => (
+                            <div key={opt} style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px 3px 10px", borderRadius: 999, background: "#bae6fd", color: "#0369a1", fontSize: 11 }}>
+                              <span>{opt}</span>
+                              <button onClick={() => setDraft(p => ({...p,furtherInfo:p.furtherInfo.map((x,j)=>j===i?{...x,options:(x.options||[]).filter(o=>o!==opt)}:x)}))}
+                                style={{ background:"none",border:"none",cursor:"pointer",color:"#0369a1",fontSize:11,lineHeight:1,padding:"0 1px",opacity:0.6 }}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input id={`fiopt-${fi.id}`} placeholder="Add option…" style={{...inp,fontSize:11,padding:"5px 8px",flex:1}}
+                            onKeyDown={e => { if(e.key==="Enter"&&e.target.value.trim()){setDraft(p=>({...p,furtherInfo:p.furtherInfo.map((x,j)=>j===i?{...x,options:[...(x.options||[]),e.target.value.trim()]}:x)}));e.target.value="";} }} />
+                          <button onClick={() => { const el=document.getElementById(`fiopt-${fi.id}`); if(el?.value.trim()){setDraft(p=>({...p,furtherInfo:p.furtherInfo.map((x,j)=>j===i?{...x,options:[...(x.options||[]),el.value.trim()]}:x)}));el.value="";} }}
+                            style={{...primaryBtn,padding:"5px 10px",fontSize:11}}>+ Add</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setDraft(p => ({...p,furtherInfo:[...p.furtherInfo,{id:`fi${Date.now()}`,label:"",type:"choice",options:[]}]}))}
+                  style={{...ghostBtn,width:"100%",textAlign:"center",fontSize:12}}>+ Add further info field</button>
+              </div>
+
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setCreateStep(2)} style={{...ghostBtn,flex:1}}>← Back</button>
                 <button onClick={() => setCreateStep(4)} style={{...primaryBtn,flex:2}}>Next → Theme</button>
@@ -945,12 +1031,12 @@ export default function App() {
                 {(guestsExpanded ? guests : guests.slice(0, 4)).map(g => (
                   <div key={g.id} style={{ background: theme.light, borderRadius: 12, padding: "12px 14px", border: `1px solid ${theme.mid}` }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: theme.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                        {initials(g.familyName)}
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#fff", border: `1.5px solid ${theme.mid}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+                        {g.emoji || "😊"}
                       </div>
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#1e293b", lineHeight: 1.2 }}>{g.familyName}</div>
-                        <div style={{ fontSize: 10, color: "#94a3b8" }}>{g.adults}A{g.kids > 0 ? `+${g.kids}K` : ""}</div>
+                        <div style={{ fontSize: 10, color: "#94a3b8" }}>{g.adults}A{g.teens > 0 ? `+${g.teens}T` : ""}{g.kids > 0 ? `+${g.kids}K` : ""}</div>
                       </div>
                     </div>
                     <div>
@@ -1012,13 +1098,13 @@ export default function App() {
           ) : (
             <div style={card}>
               <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 18 }}>
-                {[1,2].map(n => (
+                {[1,2,3].map(n => (
                   <div key={n} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <div style={{ width: 20, height: 20, borderRadius: "50%", background: guestStep >= n ? theme.primary : "#f1f5f9", color: guestStep >= n ? "#fff" : "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{n}</div>
-                    {n < 2 && <div style={{ width: 18, height: 1.5, background: guestStep > n ? theme.primary : "#f1f5f9" }} />}
+                    {n < 3 && <div style={{ width: 18, height: 1.5, background: guestStep > n ? theme.primary : "#f1f5f9" }} />}
                   </div>
                 ))}
-                <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 5 }}>{guestStep === 1 ? "Your details" : "What to bring"}</span>
+                <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 5 }}>{guestStep === 1 ? "Your details" : guestStep === 2 ? "Further info" : "What to bring"}</span>
               </div>
 
               {guestStep === 1 && (
@@ -1042,22 +1128,20 @@ export default function App() {
                     ))}
                   </div>
                   {event.customQuestions?.map(q => (
-                    <div key={q.id} style={{ marginBottom: 12 }}>
-                      <label style={lbl}>{q.label}</label>
-                      {q.type === "text" ? (
-                        <input value={guestAnswers[q.id]||""} onChange={e => setGuestAnswers(p => ({...p,[q.id]:e.target.value}))} placeholder={q.placeholder||""} style={inp} />
-                      ) : (
-                        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                          {(q.options||[]).map(opt => (
-                            <button key={opt} onClick={() => setGuestAnswers(p => ({...p,[q.id]:opt}))}
-                              style={{...ghostBtn,padding:"6px 12px",fontSize:12,background:guestAnswers[q.id]===opt?theme.light:"transparent",borderColor:guestAnswers[q.id]===opt?theme.primary:"#e2e8f0",color:guestAnswers[q.id]===opt?theme.text:"#64748b"}}>
-                              {opt}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <div key={q.id} style={{ display: "none" }} />
                   ))}
+                  {/* Emoji picker */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={lbl}>Family emoji <span style={{ color:"#cbd5e1",fontWeight:400,textTransform:"none",letterSpacing:0 }}>(shows on your guest card)</span></label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {["😊","🎉","🔥","🌸","🌿","🦋","⭐","🎈","🍕","🌈","🐶","🏡","🎵","🌻","🍀","🦄","🎸","🏄","🌊","🧡","💚","💜","🍉","🧁","🎯"].map(e => (
+                        <button key={e} onClick={() => setGuestEmoji(e)}
+                          style={{ width: 36, height: 36, borderRadius: 8, border: `2px solid ${guestEmoji===e?theme.primary:"#e2e8f0"}`, background: guestEmoji===e?theme.light:"#fff", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   {/* Reminder opt-in */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: guestReminder ? theme.light : "#f8fafc", border: `1px solid ${guestReminder ? theme.mid : "#f1f5f9"}`, marginBottom: 16, cursor: "pointer" }}
                     onClick={() => setGuestReminder(p => !p)}>
@@ -1074,11 +1158,60 @@ export default function App() {
                     if (!guestName.trim()) { setGuestError("Please enter your name."); return; }
                     if (!guestEmail.trim() || !guestEmail.includes("@")) { setGuestError("Please enter a valid email."); return; }
                     setGuestError(""); setGuestStep(2);
-                  }} style={{...primaryBtn,width:"100%"}}>Next → What to bring</button>
+                  }} style={{...primaryBtn,width:"100%"}}>Next → Further info</button>
                 </div>
               )}
 
+              {/* STEP 2 — Further Info */}
               {guestStep === 2 && (
+                <div>
+                  <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 16px" }}>Just a few more details for {event.hostName}.</p>
+
+                  {/* Custom questions */}
+                  {(event.customQuestions || []).length > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      {event.customQuestions.map(q => (
+                        <div key={q.id} style={{ marginBottom: 14 }}>
+                          <label style={lbl}>{q.label}</label>
+                          {q.type === "text"
+                            ? <input value={guestAnswers[q.id]||""} onChange={e => setGuestAnswers(p=>({...p,[q.id]:e.target.value}))} placeholder={q.placeholder||""} style={inp} />
+                            : <div style={{ display:"flex",gap:7,flexWrap:"wrap" }}>{(q.options||[]).map(opt=>(
+                                <button key={opt} onClick={()=>setGuestAnswers(p=>({...p,[q.id]:opt}))}
+                                  style={{...ghostBtn,padding:"6px 12px",fontSize:12,background:guestAnswers[q.id]===opt?theme.light:"transparent",borderColor:guestAnswers[q.id]===opt?theme.primary:"#e2e8f0",color:guestAnswers[q.id]===opt?theme.text:"#64748b"}}>{opt}</button>
+                              ))}</div>
+                          }
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Further info fields */}
+                  {(event.furtherInfo || []).length > 0 && (
+                    <div>
+                      {(event.furtherInfo || []).map(fi => (
+                        <div key={fi.id} style={{ marginBottom: 14 }}>
+                          <label style={lbl}>{fi.label}</label>
+                          {fi.type === "text"
+                            ? <input value={gFurtherInfo[fi.id]||""} onChange={e => setGFurtherInfo(p=>({...p,[fi.id]:e.target.value}))} placeholder={fi.placeholder||""} style={inp} />
+                            : <div style={{ display:"flex",flexDirection:"column",gap:6 }}>{(fi.options||[]).map(opt=>(
+                                <button key={opt} onClick={()=>setGFurtherInfo(p=>({...p,[fi.id]:opt}))}
+                                  style={{...ghostBtn,textAlign:"left",padding:"9px 13px",borderRadius:10,width:"100%",fontSize:13,background:gFurtherInfo[fi.id]===opt?theme.light:"transparent",borderColor:gFurtherInfo[fi.id]===opt?theme.primary:"#e2e8f0",color:gFurtherInfo[fi.id]===opt?theme.text:"#64748b"}}>{opt}</button>
+                              ))}</div>
+                          }
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {guestError && <p style={{ color: "#e05030", fontSize: 12, marginBottom: 6 }}>{guestError}</p>}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => { setGuestStep(1); setGuestError(""); }} style={{...ghostBtn,flex:1}}>← Back</button>
+                    <button onClick={() => { setGuestError(""); setGuestStep(3); }} style={{...primaryBtn,flex:2}}>Next → What to bring</button>
+                  </div>
+                </div>
+              )}
+
+              {guestStep === 3 && (
                 <div>
                   <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 16px" }}>Hosted by {event.hostName} — pick what you'll bring to balance things out!</p>
                   {cats.map(cat => {
@@ -1148,7 +1281,7 @@ export default function App() {
                   })}
                   {guestError && <p style={{ color: "#e05030", fontSize: 12, marginBottom: 6 }}>{guestError}</p>}
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setGuestStep(1)} style={{...ghostBtn,flex:1}}>← Back</button>
+                    <button onClick={() => { setGuestStep(2); setGuestError(""); }} style={{...ghostBtn,flex:1}}>← Back</button>
                     <button onClick={submitGuest} style={{...primaryBtn,flex:2}}>🎉 I'm in!</button>
                   </div>
                 </div>
@@ -1224,18 +1357,85 @@ export default function App() {
             {/* Custom Q answers */}
             {event.customQuestions?.length > 0 && (
               <div style={{...card,marginBottom:14}}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#94a3b8", marginBottom: 12 }}>Guest responses</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#94a3b8", marginBottom: 12 }}>💬 Questions — guest responses</div>
                 {event.customQuestions.map(q => (
                   <div key={q.id} style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 }}>{q.label}</div>
                     {guests.filter(g => g.answers?.[q.id]).map(g => (
-                      <div key={g.id} style={{ display: "flex", gap: 8, marginBottom: 3, paddingLeft: 6 }}>
-                        <span style={{ fontSize: 11, color: "#94a3b8", minWidth: 90 }}>{g.familyName}</span>
+                      <div key={g.id} style={{ display: "flex", gap: 8, marginBottom: 3, paddingLeft: 6, alignItems: "center" }}>
+                        <span style={{ fontSize: 14 }}>{g.emoji || "😊"}</span>
+                        <span style={{ fontSize: 11, color: "#94a3b8", minWidth: 80 }}>{g.familyName}</span>
                         <span style={{ fontSize: 11, color: "#475569" }}>{g.answers[q.id]}</span>
                       </div>
                     ))}
+                    {guests.filter(g => g.answers?.[q.id]).length === 0 && <div style={{ fontSize: 11, color: "#cbd5e1", paddingLeft: 6, fontStyle: "italic" }}>No responses yet</div>}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Further Info responses */}
+            {event.furtherInfo?.length > 0 && (
+              <div style={{...card,marginBottom:14}}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#94a3b8", marginBottom: 12 }}>📋 Further Info — overview</div>
+                {event.furtherInfo.map(fi => {
+                  const responses = guests.filter(g => g.furtherInfoAnswers?.[fi.id]);
+                  // For choice fields, show a tally
+                  const isTally = fi.type === "choice";
+                  const tally = {};
+                  if (isTally) {
+                    responses.forEach(g => {
+                      const ans = g.furtherInfoAnswers[fi.id];
+                      tally[ans] = (tally[ans] || 0) + 1;
+                    });
+                  }
+                  return (
+                    <div key={fi.id} style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 8 }}>{fi.label}</div>
+                      {isTally ? (
+                        <div>
+                          {(fi.options || []).map(opt => {
+                            const count = tally[opt] || 0;
+                            const pct = responses.length > 0 ? Math.round((count / responses.length) * 100) : 0;
+                            const whoHas = guests.filter(g => g.furtherInfoAnswers?.[fi.id] === opt);
+                            return (
+                              <div key={opt} style={{ marginBottom: 8 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                  <span style={{ fontSize: 12, color: "#475569" }}>{opt}</span>
+                                  <span style={{ fontSize: 11, color: "#94a3b8" }}>{count} {count === 1 ? "person" : "people"}</span>
+                                </div>
+                                {count > 0 && (
+                                  <>
+                                    <div style={{ height: 3, background: "#f1f5f9", borderRadius: 99, marginBottom: 4 }}>
+                                      <div style={{ height: "100%", width: `${pct}%`, background: theme.primary, borderRadius: 99 }} />
+                                    </div>
+                                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", paddingLeft: 4 }}>
+                                      {whoHas.map(g => (
+                                        <span key={g.id} style={{ fontSize: 11, color: "#94a3b8" }}>{g.emoji || "😊"} {g.familyName}</span>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {responses.length === 0 && <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>No responses yet</div>}
+                        </div>
+                      ) : (
+                        <div>
+                          {responses.map(g => (
+                            <div key={g.id} style={{ display: "flex", gap: 8, marginBottom: 3, paddingLeft: 6, alignItems: "center" }}>
+                              <span style={{ fontSize: 14 }}>{g.emoji || "😊"}</span>
+                              <span style={{ fontSize: 11, color: "#94a3b8", minWidth: 80 }}>{g.familyName}</span>
+                              <span style={{ fontSize: 11, color: "#475569" }}>{g.furtherInfoAnswers[fi.id]}</span>
+                            </div>
+                          ))}
+                          {responses.length === 0 && <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>No responses yet</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -1248,12 +1448,13 @@ export default function App() {
                   {editingGuest?.id !== g.id ? (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, color: "#1e293b", fontSize: 13 }}>
+                        <div style={{ fontWeight: 700, color: "#1e293b", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 16 }}>{g.emoji || "😊"}</span>
                           {g.familyName}
-                          <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: 11, marginLeft: 6 }}>
+                          <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: 11 }}>
                             {g.adults}A{g.teens > 0 ? `+${g.teens}T` : ""}{g.kids > 0 ? `+${g.kids}K` : ""}
                           </span>
-                          {g.reminder && <span style={{ color: "#10b981", fontSize: 10, marginLeft: 6 }}>⏰ reminder</span>}
+                          {g.reminder && <span style={{ color: "#10b981", fontSize: 10 }}>⏰</span>}
                         </div>
                         <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{g.email}{g.phone ? ` · ${g.phone}` : ""}</div>
                         <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{g.items.map(i=>`${i.item} (×${i.servings})`).join(" · ")}</div>
