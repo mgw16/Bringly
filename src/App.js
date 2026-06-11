@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "bringly-demo-v1";
-
 const PRESET_CATEGORIES = [
   { id: "mains",    label: "Mains",           emoji: "🍖", items: ["BBQ Meat", "Roast Chicken", "Pasta Bake", "Veggie Burgers"] },
   { id: "salads",   label: "Salads & Sides",  emoji: "🥗", items: ["Green Salad", "Caesar Salad", "Coleslaw", "Pasta Salad", "Roast Veggies"] },
   { id: "bread",    label: "Bread",           emoji: "🍞", items: ["Bread Rolls", "Garlic Bread", "Focaccia"] },
   { id: "desserts", label: "Desserts",        emoji: "🍰", items: ["Cake", "Pavlova", "Brownies", "Fruit Platter", "Ice Cream"] },
-  { id: "drinks",   label: "Drinks",          emoji: "🥤", items: ["Beer", "Wine", "Soft Drinks", "Water", "Sparkling Water"] },
+  { id: "drinks",   label: "Drinks",          emoji: "🥤", items: ["Beer", "Wine", "Soft Drinks", "Juice"] },
   { id: "snacks",   label: "Snacks",          emoji: "🧀", items: ["Cheese & Crackers", "Chips & Dips", "Antipasto"] },
 ];
 
@@ -25,17 +23,19 @@ const DEMO_EVENT = {
   name: "The Wilsons' Summer BBQ",
   date: "2026-06-14",
   time: "17:00",
-  location: "42 Jacaranda Place, Toowoomba",
+  location: "42 Jacaranda Place, Toowoomba QLD 4350",
   description: "Join us for a relaxed summer BBQ! Bring a plate to share and your best company. Kids and dogs welcome 🐕",
   hostName: "Sarah & Tom Wilson",
   hostPassword: "wilson2026",
   themeId: "rose",
   welcomeMessage: "Thanks for registering for our event via Bringly! Make sure you check out who is coming along and what they're bringing. Check the categories to make sure we don't end up with all mains and no dessert — and try to bring a speciality so we all get to know you a little better 🙌",
+  eventImage: "",
+  flyerImage: "",
   categories: [
     { id: "salads",   label: "Salads & Sides", emoji: "🥗", items: ["Green Salad", "Caesar Salad", "Coleslaw", "Pasta Salad"], includeOther: true },
     { id: "bread",    label: "Bread",          emoji: "🍞", items: ["Bread Rolls", "Garlic Bread"], includeOther: true },
     { id: "desserts", label: "Desserts",       emoji: "🍰", items: ["Cake", "Pavlova", "Brownies", "Fruit Platter"], includeOther: true },
-    { id: "drinks",   label: "Drinks",         emoji: "🥤", items: ["Soft Drinks", "Water", "Juice"], includeOther: true },
+    { id: "drinks",   label: "Drinks",         emoji: "🥤", items: ["Beer", "Wine", "Soft Drinks", "Juice"], includeOther: true },
     { id: "snacks",   label: "Snacks",         emoji: "🧀", items: ["Cheese & Crackers", "Chips & Dips"], includeOther: true },
   ],
   customQuestions: [
@@ -45,6 +45,9 @@ const DEMO_EVENT = {
     { id: "fi1", label: "What time will you arrive?", type: "choice", options: ["Early (to help set up)", "Afternoon (2–4pm)", "At the start (5pm)", "Later in the evening"] },
     { id: "fi2", label: "Any notes for the hosts?", type: "text", placeholder: "Anything we should know!" },
   ],
+  updates: [
+    { id: 1, text: "We'll be setting up some yard games — bring your competitive spirit! 🏆", sentAt: "2026-06-10T08:00:00Z" },
+  ],
 };
 
 const SEED_GUESTS = [
@@ -53,11 +56,30 @@ const SEED_GUESTS = [
   { id: 3, familyName: "The Garcias",  emoji: "🌿", email: "garcias@email.com",  phone: "+61434567890", adults: 2, kids: 3, reminder: true,  editToken: "tok-3", answers: { q1: "Vegetarian x2" },   furtherInfoAnswers: { fi1: "Afternoon (2–4pm)", fi2: "" }, items: [{ cat: "salads", item: "Green Salad", servings: 10 }, { cat: "bread", item: "Garlic Bread", servings: 12 }] },
 ];
 
-async function loadData() {
-  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
+const DEMO_GUESTS_KEY = "bringly-demo-guests-v1";
+const EVENT_KEY = (id) => `bringly-event-${id}`;
+
+async function loadData(eventId) {
+  try {
+    if (!eventId || eventId === "demo-bbq") {
+      const r = localStorage.getItem(DEMO_GUESTS_KEY);
+      return { event: DEMO_EVENT, guests: r ? JSON.parse(r) : SEED_GUESTS };
+    }
+    const r = localStorage.getItem(EVENT_KEY(eventId));
+    return r ? JSON.parse(r) : null;
+  } catch { return null; }
 }
-async function saveData(d) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {}
+
+async function saveData(data) {
+  try {
+    if (!data?.event?.id || data.event.id === "demo-bbq") {
+      localStorage.setItem(DEMO_GUESTS_KEY, JSON.stringify(data.guests));
+    } else {
+      localStorage.setItem(EVENT_KEY(data.event.id), JSON.stringify(data));
+      // Also remember which event was last created
+      localStorage.setItem("bringly-last-event", data.event.id);
+    }
+  } catch {}
 }
 
 function getTheme(id) { return THEME_PRESETS.find(t => t.id === id) || THEME_PRESETS[0]; }
@@ -283,9 +305,9 @@ export default function App() {
   const [popupVisible, setPopupVisible] = useState(true);
   const [draft, setDraft] = useState({
     name: "", date: "", time: "", location: "", description: "", hostName: "",
-    hostPassword: "", themeId: "rose", eventImage: "",
+    hostPassword: "", themeId: "rose", eventImage: "", flyerImage: "",
     welcomeMessage: "Thanks for coming along! Check out who else is joining and what they're bringing — try to fill the gaps so we end up with a great spread. Bonus points for bringing a speciality so we all get to know you a little better 🙌",
-    categories: PRESET_CATEGORIES.slice(1).map(c => ({ ...c, items: [...c.items], includeOther: true })),
+    categories: PRESET_CATEGORIES.slice(1).map(c => ({ ...c, items: [...c.items].filter(i => i !== "Water" && i !== "Sparkling Water"), includeOther: true })),
     customQuestions: [],
     furtherInfo: [
       { id: "fi-arrival", label: "What time will you arrive?", type: "choice", options: ["Early (to help set up)", "On time", "A little later"] },
@@ -326,14 +348,46 @@ export default function App() {
   const [editingGuest, setEditingGuest] = useState(null);
   const [guestsExpanded, setGuestsExpanded] = useState(false);
 
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  // address autocomplete
+  const [addrSuggestions, setAddrSuggestions] = useState([]);
+  const [addrTimer, setAddrTimer] = useState(null);
+
+  // share / invite others
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [shareEmailInput, setShareEmailInput] = useState("");
+  const [shareEmailSent, setShareEmailSent] = useState(false);
+
+  // host broadcast + noticeboard
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastSent, setBroadcastSent] = useState(false);
+
   useEffect(() => {
-    loadData().then(d => {
-      setAppData(d || { event: DEMO_EVENT, guests: SEED_GUESTS });
+    const lastId = localStorage.getItem("bringly-last-event");
+    loadData(lastId || "demo-bbq").then(d => {
+      if (lastId && d) {
+        setAppData(d);
+      } else {
+        setAppData({ event: DEMO_EVENT, guests: SEED_GUESTS });
+        setIsDemoMode(true);
+      }
       setLoading(false);
     });
   }, []);
 
-  async function persist(data) { setAppData(data); await saveData(data); }
+  async function persist(data) {
+    setAppData(data);
+    await saveData(data);
+  }
+
+  function viewDemo() {
+    loadData("demo-bbq").then(d => {
+      setAppData(d || { event: DEMO_EVENT, guests: SEED_GUESTS });
+      setIsDemoMode(true);
+      setScreen("event");
+    });
+  }
 
   const event = appData?.event || DEMO_EVENT;
   const guests = appData?.guests || [];
@@ -409,8 +463,10 @@ export default function App() {
   }
 
   function createEvent() {
-    const newEvent = { ...draft, id: `event-${Date.now()}` };
-    persist({ event: newEvent, guests: [] });
+    const newEvent = { ...draft, id: `event-${Date.now()}`, updates: [] };
+    const data = { event: newEvent, guests: [] };
+    persist(data);
+    setIsDemoMode(false);
     setScreen("event");
   }
 
@@ -483,7 +539,7 @@ export default function App() {
           <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 2, marginTop: 2 }}>.com</span>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => setScreen("event")} style={ghostBtn}>View demo event</button>
+          <button onClick={() => viewDemo()} style={ghostBtn}>View demo event</button>
           <button onClick={() => setScreen("create")} style={primaryBtn}>Create event</button>
         </div>
       </div>
@@ -493,7 +549,7 @@ export default function App() {
         <p style={{ fontSize: 16, color: "#64748b", lineHeight: 1.7, margin: "0 0 36px", maxWidth: 460, marginLeft: "auto", marginRight: "auto" }}>Create an event page, share it with guests, and watch everyone coordinate who's bringing what — in real time. No spreadsheets. No group chats.</p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={() => setScreen("create")} style={{ ...primaryBtn, fontSize: 15, padding: "13px 32px" }}>Create your event →</button>
-          <button onClick={() => setScreen("event")} style={{ ...ghostBtn, fontSize: 15, padding: "13px 32px" }}>See a demo</button>
+          <button onClick={() => viewDemo()} style={{ ...ghostBtn, fontSize: 15, padding: "13px 32px" }}>See a demo</button>
         </div>
       </div>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 24px 72px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
@@ -537,12 +593,47 @@ export default function App() {
           {createStep === 1 && (
             <div style={card}>
               <h3 style={{ fontFamily: F, color: "#1e293b", marginTop: 0, marginBottom: 18, fontSize: 19 }}>Event details</h3>
-              {[["Event name","name","e.g. The Smiths' Summer BBQ"],["Host name(s)","hostName","e.g. Sarah & Tom"],["Location","location","Address or venue"]].map(([l,k,p]) => (
+              {[["Event name","name","e.g. The Smiths' Summer BBQ"],["Host name(s)","hostName","e.g. Sarah & Tom"]].map(([l,k,p]) => (
                 <div key={k} style={{ marginBottom: 12 }}>
                   <label style={lbl}>{l}</label>
                   <input value={draft[k]} onChange={e => setDraft(p2 => ({...p2,[k]:e.target.value}))} placeholder={p} style={inp} />
                 </div>
               ))}
+              {/* Address with autocomplete */}
+              <div style={{ marginBottom: 12, position: "relative" }}>
+                <label style={lbl}>Location</label>
+                <input value={draft.location}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setDraft(p => ({...p, location: val}));
+                    if (addrTimer) clearTimeout(addrTimer);
+                    if (val.length < 4) { setAddrSuggestions([]); return; }
+                    const t = setTimeout(async () => {
+                      try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q=${encodeURIComponent(val)}&countrycodes=au`);
+                        const data = await res.json();
+                        setAddrSuggestions(data.map(d => d.display_name));
+                      } catch { setAddrSuggestions([]); }
+                    }, 500);
+                    setAddrTimer(t);
+                  }}
+                  placeholder="Start typing your address…"
+                  style={inp}
+                  autoComplete="off"
+                />
+                {addrSuggestions.length > 0 && (
+                  <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: 8, zIndex: 50, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+                    {addrSuggestions.map((s, i) => (
+                      <div key={i} onClick={() => { setDraft(p => ({...p, location: s})); setAddrSuggestions([]); }}
+                        style={{ padding: "9px 12px", fontSize: 12, color: "#1e293b", cursor: "pointer", borderBottom: i < addrSuggestions.length-1 ? "1px solid #f1f5f9" : "none", background: "#fff" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+                        onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                        📍 {s}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                 <div><label style={lbl}>Date</label><input type="date" value={draft.date} onChange={e => setDraft(p => ({...p,date:e.target.value}))} style={inp} /></div>
                 <div><label style={lbl}>Time</label><input type="time" value={draft.time} onChange={e => setDraft(p => ({...p,time:e.target.value}))} style={inp} /></div>
@@ -597,6 +688,35 @@ export default function App() {
                 )}
               </div>
 
+              {/* Flyer / printable invite */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={lbl}>Printable invite / flyer <span style={{ color:"#cbd5e1",fontWeight:400,textTransform:"none",letterSpacing:0 }}>(optional — sent as a download in confirmation emails)</span></label>
+                {draft.flyerImage ? (
+                  <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", marginBottom: 8 }}>
+                    <img src={draft.flyerImage} alt="Flyer" style={{ width: "100%", maxHeight: 200, objectFit: "contain", display: "block", background: "#f8fafc" }} />
+                    <button onClick={() => setDraft(p => ({...p,flyerImage:""}))}
+                      style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: 999, color: "#fff", cursor: "pointer", padding: "4px 10px", fontSize: 12, fontFamily: FS }}>
+                      ✕ Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ border: "2px dashed #e2e8f0", borderRadius: 10, padding: "16px", textAlign: "center", background: "#fafafa" }}>
+                    <div style={{ fontSize: 24, marginBottom: 4 }}>🖼️</div>
+                    <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 10px" }}>Upload your Canva flyer or any invite image</p>
+                    <label style={{ ...primaryBtn, cursor: "pointer", padding: "8px 16px", fontSize: 12 }}>
+                      Upload flyer
+                      <input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={e => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = ev => setDraft(p => ({...p, flyerImage: ev.target.result}));
+                        reader.readAsDataURL(file);
+                      }} />
+                    </label>
+                  </div>
+                )}
+              </div>
+
               <button onClick={() => setCreateStep(2)} style={{...primaryBtn,width:"100%"}}>Next → Food categories</button>
             </div>
           )}
@@ -622,8 +742,8 @@ export default function App() {
                       <div style={{ padding: "10px 14px", borderTop: `1px solid ${activeDraftTheme.mid}` }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                           {active.items.map(item => (
-                            <div key={item} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text, maxWidth: "100%" }}>
-                              <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap" }}>{item}</span>
+                            <div key={item} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
+                              <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>{item}</span>
                               <button onClick={e => { e.stopPropagation(); setDraft(p => ({ ...p, categories: p.categories.map(c => c.id === cat.id ? { ...c, items: c.items.filter(i => i !== item) } : c) })); }}
                                 style={{ background: "none", border: "none", cursor: "pointer", color: activeDraftTheme.text, fontSize: 12, lineHeight: 1, padding: "0 2px", opacity: 0.6, flexShrink: 0 }}>✕</button>
                             </div>
@@ -655,7 +775,7 @@ export default function App() {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 7 }}>
                       {cat.items.map(item => (
                         <div key={item} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
-                          <span style={{ fontSize: 12, whiteSpace: "nowrap" }}>{item}</span>
+                          <span style={{ fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>{item}</span>
                           <button onClick={() => setDraft(p => ({ ...p, categories: p.categories.map(c2 => c2.id === cat.id ? { ...c2, items: c2.items.filter(i => i !== item) } : c2) }))}
                             style={{ background: "none", border: "none", cursor: "pointer", color: activeDraftTheme.text, fontSize: 12, lineHeight: 1, padding: "0 1px", opacity: 0.6, flexShrink: 0 }}>✕</button>
                         </div>
@@ -704,7 +824,7 @@ export default function App() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 7 }}>
                     {newCatDraft.items.map(item => (
                       <div key={item} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
-                        <span style={{ fontSize: 12, whiteSpace: "nowrap" }}>{item}</span>
+                        <span style={{ fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>{item}</span>
                         <button onClick={() => setNewCatDraft(p => ({...p,items:p.items.filter(i=>i!==item)}))}
                           style={{ background:"none",border:"none",cursor:"pointer",color:activeDraftTheme.text,fontSize:12,lineHeight:1,padding:"0 1px",opacity:0.6,flexShrink:0 }}>✕</button>
                       </div>
@@ -741,7 +861,13 @@ export default function App() {
           {/* STEP 3 — Further Info */}
           {createStep === 3 && (
             <div style={card}>
-              <h3 style={{ fontFamily: F, color: "#1e293b", marginTop: 0, marginBottom: 4, fontSize: 19 }}>Further Info</h3>
+              <h3 style={{ fontFamily: F, color: "#1e293b", marginTop: 0, marginBottom: 10, fontSize: 19 }}>Further Info</h3>
+              {/* Inspirational quote */}
+              <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
+                <p style={{ fontSize: 12, color: "#0369a1", margin: 0, lineHeight: 1.65, fontStyle: "italic" }}>
+                  💡 Now that you've set up your food options, have a think about what other things you need to know to make this a great party. For example — if you're doing setup early, could you ask if people are available to help? If it's a smoked meat party, could you ask if people want to bring a smoker? Do guests need oven space to keep food warm, or freezer space for ice cream? The more you ask upfront, the less you'll need to chase later!
+                </p>
+              </div>
               <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 0, marginBottom: 20 }}>Add questions and structured info fields for your guests to fill in.</p>
 
               {/* Section 1: Questions */}
@@ -770,10 +896,10 @@ export default function App() {
                       <div style={{ marginTop: 8 }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
                           {(q.options||[]).map(opt => (
-                            <div key={opt} style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px 3px 10px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text, fontSize: 11 }}>
-                              <span>{opt}</span>
+                            <div key={opt} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px 5px 11px", borderRadius: 999, background: activeDraftTheme.mid, color: activeDraftTheme.text }}>
+                              <span style={{ fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>{opt}</span>
                               <button onClick={() => setDraft(p => ({...p,customQuestions:p.customQuestions.map((x,j)=>j===i?{...x,options:(x.options||[]).filter(o=>o!==opt)}:x)}))}
-                                style={{ background:"none",border:"none",cursor:"pointer",color:activeDraftTheme.text,fontSize:11,lineHeight:1,padding:"0 1px",opacity:0.6 }}>✕</button>
+                                style={{ background:"none",border:"none",cursor:"pointer",color:activeDraftTheme.text,fontSize:12,lineHeight:1,padding:"0 1px",opacity:0.6,flexShrink:0 }}>✕</button>
                             </div>
                           ))}
                         </div>
@@ -818,10 +944,10 @@ export default function App() {
                       <div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 6 }}>
                           {(fi.options||[]).map(opt => (
-                            <div key={opt} style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px 3px 10px", borderRadius: 999, background: "#bae6fd", color: "#0369a1", fontSize: 11 }}>
-                              <span>{opt}</span>
+                            <div key={opt} style={{ display: "flex", alignItems: "center", gap: 3, padding: "5px 8px 5px 11px", borderRadius: 999, background: "#bae6fd", color: "#0369a1" }}>
+                              <span style={{ fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>{opt}</span>
                               <button onClick={() => setDraft(p => ({...p,furtherInfo:p.furtherInfo.map((x,j)=>j===i?{...x,options:(x.options||[]).filter(o=>o!==opt)}:x)}))}
-                                style={{ background:"none",border:"none",cursor:"pointer",color:"#0369a1",fontSize:11,lineHeight:1,padding:"0 1px",opacity:0.6 }}>✕</button>
+                                style={{ background:"none",border:"none",cursor:"pointer",color:"#0369a1",fontSize:12,lineHeight:1,padding:"0 1px",opacity:0.6,flexShrink:0 }}>✕</button>
                             </div>
                           ))}
                         </div>
@@ -882,7 +1008,7 @@ export default function App() {
     return (
       <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: FS }}>
         {WhosComing}
-        {emailPreview && <EmailPreview guest={emailPreview.guest} event={event} theme={theme} mode={emailPreview.mode} onClose={() => setEmailPreview(null)} />}}
+        {emailPreview && <EmailPreview guest={emailPreview.guest} event={event} theme={theme} mode={emailPreview.mode} onClose={() => setEmailPreview(null)} />}
         {smsPreview && (
           <SmsPreview
             title={smsPreview.mode === "confirm" ? "Confirmation SMS" : "Reminder SMS"}
@@ -929,11 +1055,28 @@ export default function App() {
                 ))}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap", alignItems: "center" }}>
+              {isDemoMode && (
+                <button onClick={() => { setScreen("create"); setCreateStep(1); }} style={{ ...primaryBtn, fontSize: 12, padding: "7px 14px" }}>
+                  🎉 Create your own event
+                </button>
+              )}
+              {!isDemoMode && <button onClick={() => setScreen("create")} style={{...ghostBtn,fontSize:12,padding:"7px 14px"}}>← Edit setup</button>}
               <button onClick={() => setScreen("host")} style={{...ghostBtn,fontSize:12,padding:"7px 14px"}}>Host dashboard</button>
               <button onClick={() => setEditScreen(true)} style={{...ghostBtn,fontSize:12,padding:"7px 14px"}}>Edit my RSVP</button>
               <button onClick={() => setScreen("landing")} style={{...ghostBtn,fontSize:12,padding:"7px 14px"}}>← Bringly</button>
             </div>
+            {/* Google Maps embed */}
+            {event.location && (
+              <div style={{ marginTop: 14, borderRadius: 10, overflow: "hidden", border: `1px solid ${theme.mid}` }}>
+                <iframe
+                  title="map"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`}
+                  width="100%" height="180" style={{ border: 0, display: "block" }}
+                  loading="lazy"
+                />
+              </div>
+            )}
           </div>
           </div>
         </div>
@@ -1079,20 +1222,60 @@ export default function App() {
 
           {/* RSVP Form */}
           {guestSubmitted ? (
-            <div style={{ ...card, background: theme.light, border: `1px solid ${theme.mid}`, textAlign: "center" }}>
-              <div style={{ fontSize: 42, marginBottom: 8 }}>🎉</div>
-              <h3 style={{ fontFamily: F, color: "#1e293b", margin: "0 0 6px" }}>You're on the list!</h3>
-              <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 4px" }}>Thanks <strong>{guestName}</strong>! Confirmation sent to <strong>{guestEmail}</strong>.</p>
-              {newGuest?.reminder && <p style={{ color: "#10b981", fontSize: 12, margin: "0 0 14px" }}>✓ You'll get a reminder the day before.</p>}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", margin: "10px 0 16px" }}>
-                {guestItems.map(i => <span key={i.item} style={{ padding: "3px 10px", borderRadius: 999, background: "#fff", border: `1px solid ${theme.mid}`, color: theme.text, fontSize: 11 }}>{i.item} · for {i.servings}</span>)}
+            <div>
+              <div style={{ ...card, background: theme.light, border: `1px solid ${theme.mid}`, textAlign: "center" }}>
+                <div style={{ fontSize: 42, marginBottom: 8 }}>🎉</div>
+                <h3 style={{ fontFamily: F, color: "#1e293b", margin: "0 0 6px" }}>You're on the list!</h3>
+                <p style={{ color: "#64748b", fontSize: 13, margin: "0 0 4px" }}>Thanks <strong>{guestName}</strong>! Confirmation sent to <strong>{guestEmail}</strong>.</p>
+                {newGuest?.reminder && <p style={{ color: "#10b981", fontSize: 12, margin: "0 0 10px" }}>✓ You'll get a reminder the day before.</p>}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", margin: "8px 0 14px" }}>
+                  {guestItems.map(i => <span key={i.item} style={{ padding: "3px 10px", borderRadius: 999, background: "#fff", border: `1px solid ${theme.mid}`, color: theme.text, fontSize: 11 }}>{i.item} · for {i.servings}</span>)}
+                </div>
+                {/* Flyer download */}
+                {event.flyerImage && (
+                  <div style={{ margin: "0 0 12px" }}>
+                    <a href={event.flyerImage} download="invite.png"
+                      style={{ ...primaryBtn, display: "inline-block", textDecoration: "none", padding: "8px 18px", fontSize: 12 }}>
+                      🖼️ Download your printable invite
+                    </a>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button onClick={() => newGuest && setEmailPreview({ guest: newGuest, mode: "confirm" })} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>📧 Preview confirmation email</button>
+                  {newGuest?.phone && <button onClick={() => newGuest && setSmsPreview({ guest: newGuest, mode: "confirm" })} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>💬 Preview SMS</button>}
+                  <button onClick={resetGuest} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>Add another guest</button>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                <button onClick={() => newGuest && setEmailPreview({ guest: newGuest, mode: "confirm" })} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>📧 Preview confirmation email</button>
-                {newGuest?.reminder && <button onClick={() => newGuest && setEmailPreview({ guest: newGuest, mode: "reminder" })} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>📧 Preview reminder email</button>}
-                {newGuest?.phone && <button onClick={() => newGuest && setSmsPreview({ guest: newGuest, mode: "confirm" })} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>💬 Preview confirmation SMS</button>}
-                {newGuest?.phone && newGuest?.reminder && <button onClick={() => newGuest && setSmsPreview({ guest: newGuest, mode: "reminder" })} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>💬 Preview reminder SMS</button>}
-                <button onClick={resetGuest} style={{ ...ghostBtn, fontSize: 12, padding: "7px 14px" }}>Add another guest</button>
+
+              {/* Invite others */}
+              <div style={{ ...card, border: `1px solid ${theme.mid}` }}>
+                <div style={{ fontWeight: 700, color: "#1e293b", fontSize: 14, marginBottom: 4 }}>👋 Know someone who should come?</div>
+                <p style={{ fontSize: 13, color: "#64748b", margin: "0 0 12px" }}>Share the event link with them so they can sign up and let everyone know what they'll bring.</p>
+                {/* Shareable link */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {window.location.href.split("?")[0]}
+                  </div>
+                  <button onClick={() => { navigator.clipboard?.writeText(window.location.href.split("?")[0]); }}
+                    style={{ ...primaryBtn, padding: "9px 14px", fontSize: 12 }}>Copy link</button>
+                </div>
+                {/* Send email invite */}
+                {!shareEmailSent ? (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#94a3b8", marginBottom: 6 }}>Or send them an invite by email</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input type="email" value={shareEmailInput} onChange={e => setShareEmailInput(e.target.value)}
+                        placeholder="friend@email.com"
+                        style={{ ...inp, flex: 1, fontSize: 12, padding: "8px 10px" }} />
+                      <button onClick={() => { if (shareEmailInput.includes("@")) { setShareEmailSent(true); setTimeout(() => { setShareEmailSent(false); setShareEmailInput(""); }, 3000); } }}
+                        style={{ ...ghostBtn, fontSize: 12, padding: "8px 14px" }}>Send →</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: "#ecfdf5", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#10b981", textAlign: "center" }}>
+                    ✓ Invite sent to {shareEmailInput}!
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -1286,6 +1469,21 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Noticeboard */}
+          {(event.updates || []).length > 0 && (
+            <div style={{ ...card, marginTop: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#94a3b8", marginBottom: 12 }}>📌 Noticeboard — updates from {event.hostName}</div>
+              {[...(event.updates || [])].reverse().map(u => (
+                <div key={u.id} style={{ borderBottom: "1px solid #f8fafc", paddingBottom: 10, marginBottom: 10 }}>
+                  <p style={{ fontSize: 13, color: "#1e293b", margin: "0 0 4px", lineHeight: 1.5 }}>{u.text}</p>
+                  <span style={{ fontSize: 10, color: "#94a3b8" }}>
+                    {u.sentAt ? new Date(u.sentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1490,8 +1688,66 @@ export default function App() {
                 </div>
               ))}
               {guests.length > 0 && (
-                <button onClick={async () => { if(window.confirm("Clear all guest data?")) await persist({...appData,guests:[]}); }}
-                  style={{...ghostBtn,color:"#e05030",borderColor:"#fecaca",fontSize:11,marginTop:4}}>🗑 Clear all</button>
+                <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => {
+                    const rows = [
+                      ["Name","Email","Phone","Adults","Teens","Kids","Reminder","Items","Dietary","Arrival"],
+                      ...guests.map(g => [
+                        g.familyName, g.email||"", g.phone||"",
+                        g.adults, g.teens||0, g.kids,
+                        g.reminder?"Yes":"No",
+                        (g.items||[]).map(i=>`${i.item}(×${i.servings})`).join("; "),
+                        g.answers?.q1||"",
+                        g.furtherInfoAnswers?.fi1||""
+                      ])
+                    ];
+                    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+                    const blob = new Blob([csv], {type:"text/csv"});
+                    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+                    a.download = `${event.name.replace(/\s+/g,"-")}-guests.csv`; a.click();
+                  }} style={{...ghostBtn,fontSize:11,padding:"6px 12px"}}>📥 Export CSV</button>
+                  <button onClick={async () => { if(window.confirm("Clear all guest data?")) await persist({...appData,guests:[]}); }}
+                    style={{...ghostBtn,color:"#e05030",borderColor:"#fecaca",fontSize:11,padding:"6px 12px"}}>🗑 Clear all</button>
+                </div>
+              )}
+            </div>
+
+            {/* Broadcast email + noticeboard */}
+            <div style={{...card}}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#94a3b8", marginBottom: 12 }}>📌 Noticeboard &amp; Broadcast</div>
+              <p style={{ fontSize: 12, color: "#64748b", margin: "0 0 12px" }}>Post an update — it'll appear on the event noticeboard and be emailed to all guests who provided an email.</p>
+              {(event.updates||[]).length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  {[...(event.updates||[])].reverse().map(u => (
+                    <div key={u.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: "1px solid #f8fafc" }}>
+                      <div>
+                        <p style={{ fontSize: 12, color: "#1e293b", margin: "0 0 2px" }}>{u.text}</p>
+                        <span style={{ fontSize: 10, color: "#94a3b8" }}>{u.sentAt ? new Date(u.sentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                      </div>
+                      <button onClick={() => persist({...appData, event: {...event, updates: (event.updates||[]).filter(x=>x.id!==u.id)}})}
+                        style={{ background:"none",border:"none",cursor:"pointer",color:"#e05030",fontSize:12,flexShrink:0 }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!broadcastSent ? (
+                <div>
+                  <textarea value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)}
+                    placeholder="e.g. We'll be opening the pool — don't forget your swimmers! 🏊"
+                    rows={3} style={{...inp, resize:"vertical", marginBottom:8, fontSize:13}} />
+                  <button onClick={() => {
+                    if (!broadcastMsg.trim()) return;
+                    const update = { id: Date.now(), text: broadcastMsg.trim(), sentAt: new Date().toISOString() };
+                    persist({...appData, event: {...event, updates: [...(event.updates||[]), update]}});
+                    setBroadcastMsg("");
+                    setBroadcastSent(true);
+                    setTimeout(() => setBroadcastSent(false), 3000);
+                  }} style={{...primaryBtn, fontSize:13}}>📣 Post update &amp; send to guests</button>
+                </div>
+              ) : (
+                <div style={{ background: "#ecfdf5", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#10b981", textAlign: "center" }}>
+                  ✓ Update posted to noticeboard and emailed to {guests.filter(g=>g.email).length} guests!
+                </div>
               )}
             </div>
           </div>
