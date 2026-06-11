@@ -280,7 +280,7 @@ export default function App() {
   const [popupVisible, setPopupVisible] = useState(true);
   const [draft, setDraft] = useState({
     name: "", date: "", time: "", location: "", description: "", hostName: "",
-    hostPassword: "", themeId: "rose",
+    hostPassword: "", themeId: "rose", eventImage: "",
     welcomeMessage: "Thanks for coming along! Check out who else is joining and what they're bringing — try to fill the gaps so we end up with a great spread. Bonus points for bringing a speciality so we all get to know you a little better 🙌",
     categories: PRESET_CATEGORIES.slice(1).map(c => ({ ...c, items: [...c.items], includeOther: true })),
     customQuestions: [],
@@ -550,6 +550,44 @@ export default function App() {
                 <label style={lbl}>Host password</label>
                 <input type="password" value={draft.hostPassword} onChange={e => setDraft(p => ({...p,hostPassword:e.target.value}))} placeholder="For your host dashboard" style={inp} />
               </div>
+
+              {/* Event photo */}
+              <div style={{ marginBottom: 18 }}>
+                <label style={lbl}>Event photo <span style={{ color:"#cbd5e1",fontWeight:400,textTransform:"none",letterSpacing:0 }}>(optional — shown as a hero image on your event page)</span></label>
+                {draft.eventImage ? (
+                  <div style={{ position: "relative", borderRadius: 10, overflow: "hidden", marginBottom: 8 }}>
+                    <img src={draft.eventImage} alt="Event" style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+                    <button onClick={() => setDraft(p => ({...p,eventImage:""}))}
+                      style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.55)", border: "none", borderRadius: 999, color: "#fff", cursor: "pointer", padding: "4px 10px", fontSize: 12, fontFamily: FS }}>
+                      ✕ Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ border: "2px dashed #e2e8f0", borderRadius: 10, padding: "20px 16px", textAlign: "center", background: "#fafafa" }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
+                    <p style={{ fontSize: 12, color: "#94a3b8", margin: "0 0 12px" }}>Upload a photo or paste an image URL</p>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      <label style={{ ...primaryBtn, cursor: "pointer", padding: "8px 16px", fontSize: 12 }}>
+                        Upload photo
+                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = ev => setDraft(p => ({...p, eventImage: ev.target.result}));
+                          reader.readAsDataURL(file);
+                        }} />
+                      </label>
+                      <input
+                        placeholder="…or paste an image URL"
+                        style={{ ...inp, flex: 1, minWidth: 160, fontSize: 12, padding: "8px 10px" }}
+                        onBlur={e => { if(e.target.value.trim()) setDraft(p => ({...p,eventImage:e.target.value.trim()})); }}
+                        onKeyDown={e => { if(e.key==="Enter"&&e.target.value.trim()) setDraft(p => ({...p,eventImage:e.target.value.trim()})); }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button onClick={() => setCreateStep(2)} style={{...primaryBtn,width:"100%"}}>Next → Food categories</button>
             </div>
           )}
@@ -775,7 +813,16 @@ export default function App() {
         )}
 
         {/* Banner */}
-        <div style={{ background: `linear-gradient(135deg,${theme.light} 0%,#fff 100%)`, borderBottom: `1px solid ${theme.mid}`, padding: "28px 20px 22px" }}>
+        <div style={{ background: `linear-gradient(135deg,${theme.light} 0%,#fff 100%)`, borderBottom: `1px solid ${theme.mid}` }}>
+          {/* Hero image */}
+          {event.eventImage && (
+            <div style={{ width: "100%", maxHeight: 260, overflow: "hidden", position: "relative" }}>
+              <img src={event.eventImage} alt={event.name}
+                style={{ width: "100%", height: 260, objectFit: "cover", display: "block" }} />
+              <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to bottom, transparent 40%, ${theme.light}ee 100%)` }} />
+            </div>
+          )}
+          <div style={{ padding: event.eventImage ? "16px 20px 22px" : "28px 20px 22px" }}>
           <div style={{ maxWidth: 620, margin: "0 auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
               <div style={{ flex: 1 }}>
@@ -801,6 +848,7 @@ export default function App() {
               <button onClick={() => setEditScreen(true)} style={{...ghostBtn,fontSize:12,padding:"7px 14px"}}>Edit my RSVP</button>
               <button onClick={() => setScreen("landing")} style={{...ghostBtn,fontSize:12,padding:"7px 14px"}}>← Bringly</button>
             </div>
+          </div>
           </div>
         </div>
 
